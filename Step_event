@@ -1,0 +1,85 @@
+//Player Inputs
+
+getControls();
+
+//X movement
+	//Direction
+	moveDir = rightKey - leftKey;
+
+	//Get Speed
+	xSpd = moveDir * moveSpd;
+
+	//X collision
+	var _subPixel = .5;
+	if place_meeting(x + xSpd, y, oWall)
+	{
+		//wall approach at a reduced speed
+		var _pixelCheck = _subPixel * sign(xSpd);
+		while !place_meeting(x + _pixelCheck, y, oWall)
+		{
+			x += _pixelCheck;
+		}
+	
+		//set x speed to zero to "collide"
+		xSpd = 0;
+	}
+ 
+	//Move
+	x += xSpd;
+	
+//Y movement
+	//gravity
+	ySpd += grav;
+	
+	//reset or prepare jumping variables
+	if onGround
+		{
+			jumpCount = 0;
+		}
+	
+	//Jump
+	if jumpKeyBuffered && jumpCount < jumpMax
+	{
+		//Reset Jump Buffer
+		jumpKeyBuffered = false;
+		jumpKeyTimer = 0;
+		
+		//increase jumps performed
+		jumpCount++;
+		
+		
+		//set y speed to jump speed
+		ySpd = jumpSpd;
+	}
+	
+	//Y collision and movement
+		//fall speed cap
+		if ySpd > termVel { ySpd = termVel; };
+		//Collision
+		var _subPixel = .5;
+		if place_meeting ( x, y + ySpd, oWall)
+		{
+			//wall approach at a reduced speed
+			var _pixelCheck = _subPixel * sign(ySpd);
+			while !place_meeting ( x, y + _pixelCheck, oWall)
+			{
+				y += _pixelCheck;
+			}
+		
+		//set ySpd to 0 for collision
+		ySpd = 0;
+		
+	}
+	
+	//set if on ground
+	if ySpd >= 0 && place_meeting( x, y+1, oWall)
+		{
+			onGround = true;	
+		}
+		
+	else
+		{
+			onGround = false;
+		}
+	//Move
+	y += ySpd;
