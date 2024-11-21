@@ -1,0 +1,156 @@
+//Player Inputs
+
+getControls();
+
+//X movement
+	//Direction
+	moveDir = rightKey - leftKey;
+
+	//Get Speed
+	xSpd = moveDir * moveSpd;
+
+	//X collision
+	var _subPixel = .5;
+	if place_meeting(x + xSpd, y, oWall)
+	{
+		//wall approach at a reduced speed
+		var _pixelCheck = _subPixel * sign(xSpd);
+		while !place_meeting(x + _pixelCheck, y, oWall)
+		{
+			x += _pixelCheck;
+		}
+	
+		//set x speed to zero to "collide"
+		xSpd = 0;
+	}
+ 
+	//Move
+	x += xSpd;
+	
+//Y movement
+	//gravity
+	
+	if coyoteHangTimer  > 0
+		{	//count the timer down
+			coyoteHangTimer--;
+		}
+		
+		else
+			{
+				ySpd += grav;
+				//we're no longer on the ground
+				setOnGround(false);
+			}
+	
+	
+	//reset or prepare jumping variables
+	if onGround
+		{
+			jumpCount = 0;
+			jumpHoldTimer = 0;
+			coyoteJumpTimer = coyoteJumpFrames;
+		}
+	
+	else
+		//If player not on ground, keep from extra jump.	
+		{
+			coyoteJumpTimer--;
+			if jumpCount == 0 && coyoteJumpTimer <= 0 { jumpCount = 1;};
+				
+			coyoteHangTimer = 0;
+		}
+	
+	//Initiate Jump
+	if jumpKeyBuffered && jumpCount < jumpMax
+		{
+			//Reset Jump Buffer
+			jumpKeyBuffered = false;
+			jumpKeyBufferTimer = 0;
+		
+			//increase jumps performed
+			jumpCount++;
+		
+			//Set the jump hold timer
+			jumpHoldTimer = jumpHoldFrames[jumpCount -1];
+			
+			//tell ourself we're on the ground
+			setOnGround(false);
+			
+		}
+		
+	//cut off jump by releasing jump button
+	if !jumpKey
+		{
+			jumpHoldTimer = 0;
+		}
+	//Jump based on the timer/holding the button
+	if jumpHoldTimer > 0
+		{
+			//constantly set the ySpd equal to jumpSpd
+			ySpd = jumpSpd[jumpCount -1];
+			//count down timer
+			jumpHoldTimer--;
+		}
+	
+	//Y collision and movement
+		//fall speed cap
+		if ySpd > termVel { ySpd = termVel; };
+		//Collision
+		var _subPixel = .5;
+		if place_meeting ( x, y + ySpd, oWall)
+		{
+			//wall approach at a reduced speed
+			var _pixelCheck = _subPixel * sign(ySpd);
+			while !place_meeting ( x, y + _pixelCheck, oWall)
+			{
+				y += _pixelCheck;
+			}
+			
+			//Bonk code
+			if ySpd < 0
+				{
+					jumpHoldTimer = 0;
+				}
+			
+			//set ySpd to 0 for collision
+			ySpd = 0;
+		
+		}
+	
+	//set if on ground
+	if ySpd >= 0 && place_meeting( x, y+1, oWall)
+		{
+			setOnGround(true);
+		}
+		
+	 
+	//Move
+	y += ySpd;
+		
+
+/*(
+}
+
+move_and_collide(xsp, ysp, oWall1_1)
+
+if (place_meeting(x,y,ogoal1))
+{
+	room_goto_next();
+}
+
+if (place_meeting(x, y, oenemy1_1,))
+{
+	room_restart();
+}
+
+if (place_meeting(x, y, oenemy2_1,))
+{
+	room_restart();
+}
+
+if (place_meeting(x, y, oenemy3_1,))
+{
+	room_restart();
+}
+
+*/
