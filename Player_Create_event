@@ -1,0 +1,47 @@
+function setOnGround(_val = true)
+	{
+		if _val == true
+			{
+				onGround = true;
+				coyoteHangTimer = coyoteHangFrames;
+			}
+			
+			else
+				{
+					onGround = false;
+					coyoteHangTimer = 0;
+				}
+	}
+
+
+//control setup
+controlsSetup();
+
+//moving
+
+moveDir = 0;
+moveSpd = 2;
+xSpd	= 0;
+ySpd	= 0;
+
+//jumping
+
+grav	= .275;
+termVel = 4;
+onGround = true;
+jumpMax = 1;
+jumpCount = 0;
+jumpHoldTimer = 0;
+		//jump values for each successive jump
+		jumpHoldFrames[0] = 18;
+		jumpSpd[0]	= -3.15;
+		jumpHoldFrames[1] = 10;
+		jumpSpd[1]	= -2.85
+
+	//coyote time
+		//hang time
+		coyoteHangFrames = 2;
+		coyoteHangTimer = 0;
+		//jump buffer time
+		coyoteJumpFrames = 5;
+		coyoteJumpTimer = 0;
