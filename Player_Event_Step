@@ -1,0 +1,612 @@
+//Player Inputs
+getControls();
+
+//get out of solid moving platforms that have positioned themselves into the player in the begin step.
+#region
+	var _rightWall = noone;
+	var _leftWall = noone;
+	var _bottomWall = noone;
+	var _topWall = noone;
+	var _list = ds_list_create();
+	var _listSize = instance_place_list(x, y, oMovePlat, _list, false);
+	
+	//loop through all colliding moving plats.
+	for( var i = 0; i < _listSize; i++ )
+		{
+			var _listInst = _list[| i];
+			
+			//find closest walls in each direction
+				//right walls 
+				if _listInst.bbox_left - _listInst.xSpd >= bbox_right -1
+					{
+						if !instance_exists(_rightWall) || _listInst.bbox_left < _rightWall.bbox_left
+							{
+								_rightWall = _listInst;
+							}
+					}
+				//left walls
+				if _listInst.bbox_right - _listInst.xSpd <= bbox_left +1
+					{
+						if !instance_exists(_leftWall) || _listInst.bbox_right > _leftWall.bbox_right
+							{
+								_leftWall = _listInst;
+							}
+					}
+				//Bottom wall
+				if _listInst.bbox_top - _listInst.ySpd >= bbox_bottom -1
+					{
+						if !_bottomWall || _listInst.bbox_top < _bottomWall.bbox_top
+							{
+								_bottomWall = _listInst;
+							}
+					}
+				//Top Wall
+				if _listInst.bbox_bottom - _listInst.ySpd <= bbox_top +1
+					{
+						if !_topWall || _listInst.bbox_bottom > _topWall.bbox_bottom
+							{
+								_topWall = _listInst;
+							}
+					}
+		}			
+					
+
+// destroy the _ds list to save memory
+ds_list_destroy(_list);
+
+//Get out of the walls
+	//Right wall
+	if instance_exists(_rightWall)
+		{
+			var _rightDist = bbox_right - x;
+			x = _rightWall.bbox_left - _rightDist;
+		}
+	//Left wall
+	if instance_exists(_leftWall)
+		{
+			var _leftDist = x - bbox_left;
+			x = _leftWall.bbox_right + _leftDist;
+		}
+
+	//Bottom wall
+	if instance_exists(_bottomWall)
+		{
+			var _bottomDist = bbox_bottom - y;
+			y = _bottomWall.bbox_top - _bottomDist;
+		}
+		
+	//Top Wall (includes collison for polish and crouching features)
+	if instance_exists(_topWall)
+		{
+			var _upDist = y - bbox_top;
+			var _targetY = _topWall.bbox_bottom + _upDist;
+			//Check if there isn't a wall in the way
+			if !place_meeting( x, _targetY, oWall )
+				{
+					y = _targetY;
+				}
+		}
+#endregion
+
+//Don't get left behind by my movePlat!!
+earlyMoveplatXSpd = false;
+if instance_exists( myFloorPlat ) && myFloorPlat.xSpd != 0 && !place_meeting( x, y + movePlatMaxYSpd+1, myFloorPlat )
+	{
+		var _xCheck = myFloorPlat.xSpd;
+		//Go ahead and move ourselves back onto that platform if there is no wall in the way
+		if !place_meeting( x + _xCheck, y, oWall )
+			{
+				x += _xCheck;
+				earlyMoveplatXSpd = true;
+			}
+	}
+
+//Crouching
+	//Transition to crouch
+		//Manual = downKey | Automatic = wall collision
+		if onGround && (downKey || place_meeting(x, y, oWall))
+			{
+				crouching = true;
+			}
+		
+		/*/Forced / Automatic
+		if onGround & place_meeting(x, y, oWall)
+			{
+				crouching = true;
+			}//*/
+		
+		//Change collision mask
+		if crouching { mask_index = crouchSpr; };
+		
+	//Transition out of crouching
+			//Manual = !downKey | Automatic = !onGround
+			if crouching && (!downKey || !onGround)
+				{
+					//Check if I CAN uncrouch
+					mask_index = idleSpr;
+					//uncrouch if no solid wall in the way
+					if !place_meeting(x,y,oWall)
+						{
+							crouching = false;
+						}
+					//go back to crouching mask index if we can't uncrouch
+					else
+						{
+							mask_index = crouchSpr;
+						}
+				}
+			/*/ Automatic uncrouch when in the air
+			if !onGround
+				{
+					{
+					//Check if I CAN uncrouch
+					mask_index = idleSpr;
+					//uncrouch if no solid wall in the way
+					if !place_meeting(x,y,oWall)
+						{
+							crouching = false;
+						}
+					//go back to crouching mask index if we can't uncrouch
+					else
+						{
+							mask_index = crouchSpr;
+						}
+					}
+				}//*/
+				
+	
+//X movement
+	//Direction
+	moveDir = rightKey - leftKey;
+	
+	
+	//get my face
+	if moveDir != 0 {face = moveDir;};
+
+	//Get xSpd
+	runType = runKey;
+	xSpd = moveDir * moveSpd[runType];
+	
+	//slow xSpd when crouching
+	if crouching { xSpd = moveDir * crouchMoveSpd; };
+
+	//X collision
+	var _subPixel = .5;
+	if place_meeting(x + xSpd, y, oWall)
+	{
+		//first check if slope to go up
+		if !place_meeting(x + xSpd, y - abs(xSpd) - 1, oWall)
+			{
+				while place_meeting (x + xSpd, y, oWall) {y -= _subPixel;};
+			}
+			
+		//next check for ceiling slops, otherwise regular collision
+		else
+			{
+				//ceiling slope collision
+				if !place_meeting(x + xSpd, y + abs(xSpd)+1, oWall)
+				{
+					while place_meeting (x + xSpd, y, oWall) {y += _subPixel;};
+				}
+				//Normal collision
+				else
+					{
+						//wall approach at a reduced speed
+						var _pixelCheck = _subPixel * sign(xSpd);
+						while !place_meeting(x + _pixelCheck, y, oWall){x +=_pixelCheck;};
+	
+						//set x speed to zero to "collide"
+						xSpd = 0;
+	
+					}
+			}
+	}
+ 
+	//go down slopes
+	downSlopeSemiSolid = noone;
+	if ySpd >= 0 && !place_meeting(x + xSpd, y + 1, oWall) && place_meeting(x + xSpd, y + abs(xSpd) + 1, oWall)
+		{
+			
+			//check for a semisolid in the way
+			downSlopeSemiSolid = checkForSemisolidPlatform( x + xSpd, y + abs(xSpd)+1);
+			//precicely move  down slopes if there isn't semisolid in the way
+			if !instance_exists(downSlopeSemiSolid)
+		
+			{
+				while !place_meeting(x + xSpd, y + _subPixel, oWall) {y += _subPixel;};
+			}
+		
+		}
+
+	//Move
+	x += xSpd;
+	
+//Y movement
+	//gravity
+	
+	if coyoteHangTimer  > 0
+		{	//count the timer down
+			coyoteHangTimer--;
+		}
+		
+		else
+			{
+				ySpd += grav;
+				//we're no longer on the ground
+				setOnGround(false);
+			}
+	
+	
+	//reset or prepare jumping variables
+	if onGround
+		{
+			jumpCount = 0;
+			jumpHoldTimer = 0;
+			coyoteJumpTimer = coyoteJumpFrames;
+		}
+	
+	else
+		//If player not on ground, keep from extra jump.	
+		{
+			coyoteJumpTimer--;
+			if jumpCount == 0 && coyoteJumpTimer <= 0 { jumpCount = 1;};
+				
+			coyoteHangTimer = 0;
+		}
+	
+	//Initiate Jump
+	var _floorIsSolid = false;
+	if instance_exists(myFloorPlat)
+	&& ( myFloorPlat.object_index == oWall || object_is_ancestor(myFloorPlat.object_index, oWall) )
+		{
+			_floorIsSolid = true;
+		}
+	if jumpKeyBuffered && jumpCount < jumpMax && ( !downKey || _floorIsSolid )
+			{
+				//Reset Jump Buffer
+				jumpKeyBuffered = false;
+				jumpKeyBufferTimer = 0;
+		
+				//increase jumps performed
+				jumpCount++;
+		
+				//Set the jump hold timer
+				jumpHoldTimer = jumpHoldFrames[jumpCount -1];
+			
+				//tell ourself we're on the ground
+				setOnGround(false);
+			
+			}
+		
+
+	//Jump based on the timer/holding the button
+	if jumpHoldTimer > 0
+		{
+			//constantly set the ySpd equal to jumpSpd
+			ySpd = jumpSpd[jumpCount -1];
+			//count down timer
+			jumpHoldTimer--;
+		}
+	
+	//cut off jump by releasing jump button
+	if !jumpKey
+		{
+			jumpHoldTimer = 0;
+		}
+	
+	//Y collision and movement
+		//fall speed cap
+		if ySpd > termVel { ySpd = termVel; };
+		
+		//Collision
+		var _subPixel = .5;
+		
+		//upwards Y collision (with ceiling slopes)
+		if ySpd < 0 && place_meeting (x, y + ySpd, oWall)
+			{
+				//jump into sloped ceilings
+				var _slopeSlide = false;
+				
+				//slide up left slope
+				if moveDir == 0 && !place_meeting(x - abs(ySpd) -1, y + ySpd, oWall)
+					{
+						while place_meeting(x , y + ySpd, oWall) {x -= 1;};
+						_slopeSlide = true;
+					}	
+					
+				//slide up right slope
+				if moveDir == 0 && !place_meeting (x + abs(ySpd) +1, y + ySpd, oWall)
+					{
+						while place_meeting( x, y + ySpd, oWall) {x += 1;};
+						_slopeSlide = true;
+					}
+					
+				//Normal Y collision
+				if !_slopeSlide
+					{
+						//wall approach at a reduced speed
+						var _pixelCheck = _subPixel * sign(ySpd);
+						while !place_meeting ( x, y + _pixelCheck, oWall)
+							{
+								y += _pixelCheck;
+							}
+		
+				//Bonk code (optional)
+			
+				if ySpd < 0 { jumpHoldTimer = 0; };
+			
+			
+			//set ySpd to 0 for collision
+			ySpd = 0;
+					}
+			}
+		
+		
+		//floor Y collision
+		
+		
+		//check for solid and semi solid platforms under me
+		var _clampYSpd = max ( 0, ySpd );
+		var _list = ds_list_create(); //create a DS list to store all of the objects player runs into
+		var _array = array_create(0);
+		array_push( _array, oWall, oSemiSolidWall );
+		
+	
+		//Do actual check and add objects to list	
+		var _listSize = instance_place_list(x, y + 1 + _clampYSpd + movePlatMaxYSpd, _array, _list, false);
+		
+		//HIGH RESOLUTION/HIGH SPEED OBJECT FIX
+		var _yCheck = y + 1 + _clampYSpd;
+		if instance_exists(myFloorPlat) {_yCheck += max(0, myFloorPlat.ySpd); };
+		var _semiSolid = checkForSemisolidPlatform(x, _yCheck);
+		
+		//loop through the colliding instances and only return one if its top is below the player
+		for ( var i = 0; i < _listSize; i++ )
+			{
+				//get instance of oWall or oSemiSolidWall from the list
+				var _listInst = _list[| i];
+				
+				//avoid magnetism
+				if _listInst != forgetSemiSolid
+				&& (_listInst.ySpd <= ySpd || instance_exists(myFloorPlat) )
+				&& ( _listInst.ySpd > 0 || place_meeting(x, y + 1 + _clampYSpd, _listInst) ) 
+				
+					{
+					//return a solid wall, or any semisolid wall that is below the player
+					if _listInst.object_index == oWall
+					|| object_is_ancestor(_listInst.object_index, oWall)
+					|| floor(bbox_bottom) <= ceil( _listInst.bbox_top - _listInst.ySpd )	
+						{
+							//return "highest" wall object
+							if !instance_exists(myFloorPlat)
+							|| _listInst.bbox_top + _listInst.ySpd <= myFloorPlat.bbox_top + myFloorPlat.ySpd
+							|| _listInst.bbox_top + _listInst.ySpd <= bbox_bottom
+								{
+									myFloorPlat = _listInst;
+								}
+						}
+					}
+			}
+			// destroy the DS list to avoid memory leak
+			ds_list_destroy(_list);
+			
+			//downslope semisolid for making sure we don't miss semisolids while going down slopes
+			if instance_exists(downSlopeSemiSolid) { myFloorPlat = downSlopeSemiSolid;};
+			
+			//one last check to make sure the floor platform is actually below us
+			if instance_exists(myFloorPlat) && !place_meeting( x, y + movePlatMaxYSpd, myFloorPlat )
+				{
+					myFloorPlat = noone;
+				}
+				
+			//land on the ground platform if there is one
+			if instance_exists (myFloorPlat)
+				{
+					//scoot up to wall precicely
+					var _subPixel = .5;
+					while !place_meeting( x, y + _subPixel, myFloorPlat) &&	!place_meeting(x, y, oWall) {y += _subPixel;};
+					
+					//make sure we don't end up below a semisolid
+					if myFloorPlat.object_index == oSemiSolidWall || object_is_ancestor(myFloorPlat.object_index, oSemiSolidWall)
+						{
+							while place_meeting(x, y, myFloorPlat) {y -= _subPixel;};
+						}
+						
+					//floor the y variable
+					y = floor(y);
+					
+					//collision with the ground
+					ySpd = 0;
+					setOnGround(true);
+				}
+				
+				//manually fall through a semisolid platform
+				if downKey && jumpKeyPressed
+					{
+						//make sure we have a floor platform that is semi solid
+						if instance_exists(myFloorPlat)
+						&& ( myFloorPlat.object_index == oSemiSolidWall || object_is_ancestor(myFloorPlat.object_index, oSemiSolidWall) )
+							{
+								//Check if we CAN go below semisolid
+								var _yCheck = max( 1, myFloorPlat.ySpd + 1 );
+								if !place_meeting ( x, y + _yCheck, oWall )
+									{
+										//move below the platform
+										y += 1;
+										
+										//Inherit my downward speed from my floor platform so it doesn't catch player
+										ySpd = _yCheck-1;
+										
+										//forget platform briefly to avoid getting stuck
+										forgetSemiSolid = myFloorPlat;
+										
+										//no more floor platform
+										setOnGround(false);
+										
+										//Reset Jump Buffer
+										jumpKeyBuffered = false;
+										jumpKeyBufferTimer = 0;
+									}
+							}
+					}
+				
+		
+		//Move
+		if !place_meeting ( x, y + ySpd, oWall ) { y += ySpd; };
+		
+		//reset forgetSemiSolid variable
+		if instance_exists(forgetSemiSolid) && !place_meeting(x, y, forgetSemiSolid)
+			{
+				forgetSemiSolid = noone;
+			}
+	
+//Final moving platform collisions and movement
+	//X - movePlatXSpd and collision
+	//Get movePlatXSpd
+	movePlatXSpd = 0;
+	if instance_exists(myFloorPlat) { movePlatXSpd = myFloorPlat.xSpd; };
+	
+	//Move with movePlatXSpd
+	if !earlyMoveplatXSpd
+		{
+		if place_meeting( x + movePlatXSpd, y, oWall )
+			{
+				//scoot up to wall precicely
+				var _subPixel = .5;
+				var _pixelCheck = _subPixel * sign(movePlatXSpd);
+				while !place_meeting( x + _pixelCheck, y, oWall )
+					{
+						x += _pixelCheck;
+					}
+				
+					//Set movePlatXSpd to 0 to finish collision
+					movePlatXSpd = 0;
+			}
+			//Move
+			x += movePlatXSpd;
+		}
+	//Y - snap myself to myFloorPlat if it's moving vertically
+	if instance_exists(myFloorPlat) 
+	&& (myFloorPlat.ySpd !=0
+	|| myFloorPlat.object_index == oMovePlat
+	|| object_is_ancestor(myFloorPlat.object_index, oMovePlat)
+	|| myFloorPlat.object_index == oSemiSolidMovePlat
+	|| object_is_ancestor(myFloorPlat.object_index, oSemiSolidMovePlat) )
+	{
+	
+		{
+			//Snap to the top of the floor platform (un-floor our y variable so it's not choppy)
+			if !place_meeting( x, myFloorPlat.bbox_top, oWall )
+			&& myFloorPlat.bbox_top >= bbox_bottom-movePlatMaxYSpd
+				{
+					y = myFloorPlat.bbox_top;
+				}
+		}
+		
+		/*/Going up into a solid wall while on a semisolid platform
+		if myFloorPlat.ySpd < 0 && place_meeting(x, y +myFloorPlat.ySpd, oWall)
+			{
+				//get pushed down through the semisolid floor platform
+				if myFloorPlat.object_index == oSemiSolidWall || object_is_ancestor(myFloorPlat.object_index, oSemiSolidWall)
+					{
+						//get pushed down through the semisolid
+						var _subPixel = .25;
+						while place_meeting( x, y + myFloorPlat.ySpd, oWall ) {y += _subPixel };
+						//If we got pushed into a solid wall going downwards, push ourselves back out
+						while place_meeting( x, y, oWall ) { y -= _subPizel; };
+						y = round(y);
+					}
+					
+					//Cancel the myFloorPlat variable
+					setOnGround(false);
+			}//*/
+	
+	}
+	
+	//Get pushed down through a semisolid by a moving solid platform
+	if instance_exists ( myFloorPlat )
+	&& ( myFloorPlat.object_index == oSemiSolidWall || object_is_ancestor(myFloorPlat.object_index, oSemiSolidWall) )
+	&& place_meeting( x, y, oWall )
+		{
+			//if I'm already stuck in a wall at this point, try and move me down to  get below the semisold
+			//If I'm still stuck afterwards, that just means I've been properly "crushed"
+			
+			//also, don't check too far, we don't want to warp below walls
+			var _maxPushDist = 10;
+			var _pushedDist = 0;
+			var _startY = y;
+			while place_meeting( x, y, oWall ) && _pushedDist <= _maxPushDist
+				{
+					y++;
+					_pushedDist++;
+				}
+				//forget myFloorPlat
+				myFloorPlat = noone;
+				
+				//if i'm still in a wall at this point, i've been crushed regardless, take me back to my start y to avoid funk.
+				if _pushedDist > _maxPushDist { y = _startY; };
+		}
+	
+//check if i'm crushed
+image_blend = c_white;
+if place_meeting( x, y, oWall)
+	{
+		image_blend = c_blue;
+	}
+	
+//crush death code
+/*if place_meeting(x, y, oWall)
+	{
+		crushTimer++;
+		if crushTimer > crushDeathTime
+			{
+				instance_destroy();
+			}
+		
+	}
+	else
+		{
+			crushDeathTime = 0;
+		}
+*/	
+//Sprite control
+
+	//walking
+	if abs(xSpd) > 0 {sprite_index = walkSpr;};
+	//running
+	if abs(xSpd) >= moveSpd[1] {sprite_index = runSpr;};
+	//not moving
+	if xSpd == 0 {sprite_index = idleSpr;};
+	//in the air
+	if !onGround {sprite_index = jumpSpr;};
+	//Crouching
+	if crouching {sprite_index = crouchSpr;};
+	
+	
+		// set collision mask
+		mask_index = maskSpr;
+		if crouching { mask_index = crouchSpr;};
+		
+
+/*(
+}
+
+move_and_collide(xsp, ysp, oWall1_1)
+
+if (place_meeting(x,y,ogoal1))
+{
+	room_goto_next();
+}
+
+if (place_meeting(x, y, oenemy1_1,))
+{
+	room_restart();
+}
+
+if (place_meeting(x, y, oenemy2_1,))
+{
+	room_restart();
+}
+
+if (place_meeting(x, y, oenemy3_1,))
+{
