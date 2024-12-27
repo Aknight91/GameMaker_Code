@@ -1,0 +1,110 @@
+//custom functions for player
+
+function setOnGround(_val = true)
+	{
+		if _val == true
+			{
+				onGround = true;
+				coyoteHangTimer = coyoteHangFrames;
+			}
+			
+			else
+				{
+					onGround = false;
+					myFloorPlat = noone;
+					coyoteHangTimer = 0;
+				}
+	}
+
+function checkForSemisolidPlatform(_x, _y)
+	{
+		//Create return variable
+		var _rtrn = noone;
+		
+		//We must not be moving upwards, and then we check for a normal collision
+		if ySpd >= 0 && place_meeting(_x, _y, oSemiSolidWall)
+			{
+				//create a ds list to store all colliding instances of oSemiSolidWall
+				var _list = ds_list_create();
+				var _listSize = instance_place_list(_x, _y, oSemiSolidWall, _list, false);
+				
+				//Loop through the colliding instances and only return one if it's top is below the player
+				for ( var i = 0; i < _listSize; i++ )
+					{
+						var _listInst = _list[| i];
+						if _listInst != forgetSemiSolid && floor(bbox_bottom) <= ceil( _listInst.bbox_top - _listInst.ySpd )
+							{
+								//Return the id of a semisolid platform
+								_rtrn = _listInst;
+								//Exit loop early
+								i = _listSize;
+							}
+					}
+					
+					//destroy ds list to free memory
+					ds_list_destroy(_list);
+			}
+			
+			//Return our variable
+			return _rtrn;
+	}
+
+depth = -30;
+
+//control setup
+controlsSetup();
+
+//sprites
+maskSpr = sPlayerIdle;
+idleSpr = sPlayerIdle;
+walkSpr = sPlayerWalk;
+runSpr = sPlayerRun;
+jumpSpr = sPlayerJump;
+crouchSpr = sPlayerCrouch;
+
+//moving
+
+face = 1;
+moveDir = 0;
+runType = 0;
+moveSpd[0] = 2;
+moveSpd[1] = 3.5;
+xSpd	= 0;
+ySpd	= 0;
+
+//state variables
+crouching = false;
+crouchMoveSpd = 1;
+
+
+//jumping
+
+grav	= .275;
+termVel = 4;
+onGround = true;
+jumpMax = 1;
+jumpCount = 0;
+jumpHoldTimer = 0;
+		//jump values for each successive jump
+		jumpHoldFrames[0] = 18;
+		jumpSpd[0]	= -3.15;
+		jumpHoldFrames[1] = 10;
+		jumpSpd[1]	= -2.85
+
+	//coyote time
+		//hang time
+		coyoteHangFrames = 2;
+		coyoteHangTimer = 0;
+		//jump buffer time
+		coyoteJumpFrames = 5;
+		coyoteJumpTimer = 0;
+
+//moving platforms
+myFloorPlat = noone;
+earlyMoveplatXSpd = false;
+downSlopeSemiSolid = noone;
+forgetSemiSolid = noone;
+movePlatXSpd = 0;
+movePlatMaxYSpd = termVel; // how fast the player can follow a downwards moving platform
+crushTimer = 0;
+crushDeathTime = 3;
