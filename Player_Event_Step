@@ -153,7 +153,17 @@ if instance_exists( myFloorPlat ) && myFloorPlat.xSpd != 0 && !place_meeting( x,
 						}
 					}
 				}//*/
-				
+
+//Dashing
+if dashKey
+	{
+		dashing = true;
+	}
+	
+	else
+		{
+			dashing = false;
+		}
 	
 //X movement
 	//Direction
@@ -169,9 +179,14 @@ if instance_exists( myFloorPlat ) && myFloorPlat.xSpd != 0 && !place_meeting( x,
 	
 	//slow xSpd when crouching
 	if crouching { xSpd = moveDir * crouchMoveSpd; };
+	
+	//increase speed when dashing
+	if dashing { xSpd = moveDir * dashMoveSpd; };
+	
+	
 
 	//X collision
-	var _subPixel = .5;
+	var _subPixel = .5
 	if place_meeting(x + xSpd, y, oWall)
 	{
 		//first check if slope to go up
@@ -578,14 +593,23 @@ if place_meeting( x, y, oWall)
 	//not moving
 	if xSpd == 0 {sprite_index = idleSpr;};
 	//in the air
-	if !onGround {sprite_index = jumpSpr;};
+	if !onGround && jumpCount = 1 {sprite_index = jumpSpr;};
 	//Crouching
 	if crouching {sprite_index = crouchSpr;};
-	
+	//Crouch Walk
+	if crouching && abs(xSpd) > 0 {sprite_index = crouchWalkSpr;};
+	//double jump
+	if !onGround && jumpCount = 2 {sprite_index = doubleJumpSpr;};
+	//land
+	if place_meeting (oWall) && abs(ySpd) = 0 {sprite_index = landSpr;};
+	//dash
+	if dashing && abs(xSpd) > 0 {sprite_index = dashSpr;};
 	
 		// set collision mask
 		mask_index = maskSpr;
 		if crouching { mask_index = crouchSpr;};
+		if dashing {mask_index = dashSpr;};
+		
 		
 
 /*(
@@ -610,3 +634,7 @@ if (place_meeting(x, y, oenemy2_1,))
 
 if (place_meeting(x, y, oenemy3_1,))
 {
+	room_restart();
+}
+
+*/
