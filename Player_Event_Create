@@ -1,4 +1,4 @@
-//custom functions for player
+ //custom functions for player
 
 function setOnGround(_val = true)
 	{
@@ -61,6 +61,10 @@ walkSpr = sPlayerWalk;
 runSpr = sPlayerRun;
 jumpSpr = sPlayerJump;
 crouchSpr = sPlayerCrouch;
+crouchWalkSpr = sPlayerCrouchWalk;
+doubleJumpSpr = sPlayerDoubleJump;
+dashSpr = sPlayerDash;
+landSpr = sPlayerLand;
 
 //moving
 
@@ -75,6 +79,8 @@ ySpd	= 0;
 //state variables
 crouching = false;
 crouchMoveSpd = 1;
+dashing = false;
+dashMoveSpd = 5;
 
 
 //jumping
@@ -82,7 +88,7 @@ crouchMoveSpd = 1;
 grav	= .275;
 termVel = 4;
 onGround = true;
-jumpMax = 1;
+jumpMax = 2;
 jumpCount = 0;
 jumpHoldTimer = 0;
 		//jump values for each successive jump
